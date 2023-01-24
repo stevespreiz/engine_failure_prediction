@@ -1,7 +1,15 @@
 engine_failure_prediction
 ==============================
 
-Machine learning approach to predicting aircraft engine failure in an open NASA dataset.
+Machine learning based approach to predicting aircraft engine failure. 
+Dataset from the [NASA Open Data Portal](https://data.nasa.gov/).
+
+The data [CMAPSS Jet Engine Simulated Data](https://data.nasa.gov/Aerospace/CMAPSS-Jet-Engine-Simulated-Data/ff5v-kuh6) contains several multivariate time series containing engine settings and sensor measurements. 
+The time series used for training operate until failure with the quantity of interest being Remaining Useful Life (RUL), the number of cycles until failure.
+The test datasets end at some point prior to failure and the goal is to predict the RUL at that point. 
+Data is included in this repository for convenience.
+
+Several ML approaches will be tested and compared for effectiveness in predicting on the test data. 
 
 Project Organization
 ------------
