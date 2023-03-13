@@ -50,6 +50,7 @@ def main(input_filepath, output_filepath):
         feature_window = 7 # number of cycles to average over
         
         df_train['too_soon'] = np.where((df_train.cycle < feature_window),1,0)
+        df_test['too_soon'] = np.where((df_test.cycle < feature_window),1,0)
         
        
         for j in range(1,4):
@@ -63,6 +64,14 @@ def main(input_filepath, output_filepath):
                 (df_train[col].rolling(min_periods=1, window=feature_window).max()) , df_train[col])
             df_train[col+'_min'] = np.where((df_train.too_soon == 0), \
                 (df_train[col].rolling(min_periods=1, window=feature_window).min()) , df_train[col])
+            df_test[col+'_mean'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).mean()) , df_test[col])
+            df_test[col+'_med'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).median()) , df_test[col])
+            df_test[col+'_max'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).max()) , df_test[col])
+            df_test[col+'_min'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).min()) , df_test[col])
 
         for j in range(1,22):
             #loop sensor outputs
@@ -76,6 +85,15 @@ def main(input_filepath, output_filepath):
             df_train[col+'_min'] = np.where((df_train.too_soon == 0), \
                 (df_train[col].rolling(min_periods=1, window=feature_window).min()) , df_train[col])
             df_train[col+'_chg'] = np.where((df_train[col+'_mean']==0),0,df_train[col]/df_train[col+'_mean'])
+            df_test[col+'_mean'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).mean()) , df_test[col])
+            df_test[col+'_med'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).median()) , df_test[col])
+            df_test[col+'_max'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).max()) , df_test[col])
+            df_test[col+'_min'] = np.where((df_test.too_soon == 0), \
+                (df_test[col].rolling(min_periods=1, window=feature_window).min()) , df_test[col])
+            df_test[col+'_chg'] = np.where((df_test[col+'_mean']==0),0,df_test[col]/df_test[col+'_mean'])
 
         # create RUL col to replace cycle
         num_units = df_train['unit'].max()
@@ -88,7 +106,14 @@ def main(input_filepath, output_filepath):
             df_train.loc[df_train['unit'] == i, 'cycle'] = total_life - df_train.loc[df_train['unit'] == i, 'cycle']
         df_train.rename(columns={'cycle':'RUL'},inplace=True)
 
-        df_train.to_csv(output_filepath+'processed_'+train_name, sep= ' ')
+        target = df_train['RUL']
+        df_train = df_train.drop('too_soon',axis=1)
+        df_train = df_train.drop('RUL',axis=1)
+
+
+        df_train.to_csv(output_filepath+'processed_'+train_name, sep= ',')
+        target.to_csv(output_filepath+'process_target_'+train_name,sep=',')
+        df_test.to_csv(output_filepath+'processed_'+test_name,sep=',')
 
 
 
