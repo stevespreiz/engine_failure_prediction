@@ -24,6 +24,8 @@ def main(input_filepath, output_filepath):
     for i in range(1,datasets+1):
         train_name = "train_FD00" + str(i) + ".txt"
         test_name = "test_FD00" + str(i) + ".txt"
+        
+        test_target_df = pd.read_csv(input_filepath+'RUL_FD00'+str(i)+'.txt',header=None)
         train_file = input_filepath + train_name
         test_file = input_filepath + test_name
 
@@ -99,21 +101,41 @@ def main(input_filepath, output_filepath):
         num_units = df_train['unit'].max()
         train_groups = df_train.groupby('unit')
         
-        for i in range(1,num_units+1):
+        for j in range(1,num_units+1):
             # cycle to RUL for training data
-            total_life = train_groups.get_group(i)['cycle'].max()
+            total_life = train_groups.get_group(j)['cycle'].max()
 
-            df_train.loc[df_train['unit'] == i, 'cycle'] = total_life - df_train.loc[df_train['unit'] == i, 'cycle']
+            df_train.loc[df_train['unit'] == j, 'cycle'] = total_life - df_train.loc[df_train['unit'] == j, 'cycle']
         df_train.rename(columns={'cycle':'RUL'},inplace=True)
 
         target = df_train['RUL']
         df_train = df_train.drop('too_soon',axis=1)
-        df_train = df_train.drop('RUL',axis=1)
+        df_test = df_test.drop('too_soon',axis=1)
+        # df_train = df_train.drop('RUL',axis=1)
 
 
-        df_train.to_csv(output_filepath+'processed_'+train_name, sep= ',')
-        target.to_csv(output_filepath+'process_target_'+train_name,sep=',')
-        df_test.to_csv(output_filepath+'processed_'+test_name,sep=',')
+        df_train.to_csv(output_filepath+'processed_features_'+train_name, sep= ',')
+        # target.to_csv(output_filepath+'process_target_'+train_name,sep=',')
+
+
+        num_units_test = df_test['unit'].max()
+        print('test units: ' + str(num_units_test))
+        test_groups = df_test.groupby('unit')
+        for j in range(1,num_units_test+1):
+            #cycle to RUL for test data
+            final_cycle = int(test_target_df.iloc[j-1])
+            num_cycles = test_groups.get_group(j)['cycle'].max()
+
+            df_test.loc[df_test['unit']==j,'cycle'] = num_cycles + final_cycle - df_test.loc[df_test['unit']==j,'cycle']
+            # df_test.loc[df_test['unit']==j,'cycle'] = num_cycles+final_cycle+1-df_test.loc[df_test['unit']==j,'cycle']
+        df_test.rename(columns={'cycle':'RUL'},inplace=True)
+
+
+        # test_target_df.set_axis(["RUL"],axis=1,inplace=True)
+        # df_test['RUL'] = test_target_df['RUL']
+
+
+        df_test.to_csv(output_filepath+'processed_features_'+test_name,sep=',')
 
 
 
