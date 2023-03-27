@@ -8,11 +8,11 @@ python sparse_ae_kl.py --epochs 10 --reg_param 0.001 --add_sparse yes
 '''
 
 import torch
-import torchvision
+# import torchvision
 import torch.nn as nn
 import matplotlib
 import matplotlib.pyplot as plt
-import torchvision.transforms as transforms
+# import torchvision.transforms as transforms
 import torch.nn.functional as F
 import torch.optim as optim
 import os
@@ -20,14 +20,14 @@ import time
 import numpy as np
 import argparse
 from tqdm import tqdm
-from torchvision import datasets
+# from torchvision import datasets
 from torch.utils.data import DataLoader,TensorDataset
-from torchvision.utils import save_image
+# from torchvision.utils import save_image
 matplotlib.style.use('ggplot')
 
 # constructing argument parsers 
 ap = argparse.ArgumentParser()
-ap.add_argument('-e', '--epochs', type=int, default=10,
+ap.add_argument('-e', '--epochs', type=int, default=5,
     help='number of epochs to train our network for')
 ap.add_argument('-l', '--reg_param', type=float, default=0.001, 
     help='regularization parameter `lambda`')
@@ -39,7 +39,7 @@ EPOCHS = args['epochs']
 BETA = args['reg_param']
 ADD_SPARSITY = args['add_sparse']
 RHO = 0.05
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 1e-3
 BATCH_SIZE = 32
 print(f"Add sparsity regularization: {ADD_SPARSITY}")
 
@@ -56,8 +56,8 @@ device = get_device()
 Need to get data into a DataLoader 
 '''
 i = 1
-train_data = np.loadtxt("../../data/processed/standardized_train_FD00"+str(i)+".txt",delimiter=",")
-test_data = np.loadtxt("../../data/processed/standardized_test_FD00"+str(i)+".txt",delimiter=",")
+train_data = np.loadtxt("./data/processed/standardized_train_FD00"+str(i)+".txt",delimiter=",")
+test_data = np.loadtxt("./data/processed/standardized_test_FD00"+str(i)+".txt",delimiter=",")
 train_x = torch.Tensor(train_data[:,2:])
 train_y = torch.Tensor(train_data[:,1])
 test_x = torch.Tensor(test_data[:,2:])
@@ -74,7 +74,7 @@ class SparseAutoencoder(nn.Module):
         super(SparseAutoencoder, self).__init__()
  
         # encoder
-        self.enc1 = nn.Linear(in_features=25, out_features=18)
+        self.enc1 = nn.Linear(in_features=24, out_features=18)
         self.enc2 = nn.Linear(in_features=18, out_features=14)
  
         # decoder 
@@ -91,6 +91,11 @@ class SparseAutoencoder(nn.Module):
         x = F.relu(self.dec2(x))
         return x
     
+    def encode(self,x):
+        x = F.relu(self.enc1(x))
+        x = F.relu(self.enc2(x))
+        return x
+    
 model = SparseAutoencoder().to(device)
 
 # the loss function
@@ -102,7 +107,7 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 model_children = list(model.children())
 
 def kl_divergence(rho, rho_hat):
-    rho_hat = torch.mean(F.sigmoid(rho_hat), 1) # sigmoid because we need the probability distributions
+    rho_hat = torch.mean(torch.sigmoid(rho_hat), 1) # sigmoid because we need the probability distributions
     rho = torch.tensor([rho] * len(rho_hat)).to(device)
     return torch.sum(rho * torch.log(rho/rho_hat) + (1 - rho) * torch.log((1 - rho)/(1 - rho_hat)))
 # define the sparse loss function
@@ -176,7 +181,7 @@ for epoch in range(EPOCHS):
 end = time.time()
 print(f"{(end-start)/60:.3} minutes")
 # save the trained model
-torch.save(model.state_dict(), f"../outputs/sparse_ae{EPOCHS}.pth")
+torch.save(model.state_dict(), f"./src/features/sparse_ae{EPOCHS}.pth")
 
 # loss plots
 plt.figure(figsize=(10, 7))
@@ -185,6 +190,31 @@ plt.plot(val_loss, color='red', label='validataion loss')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-plt.savefig('../outputs/loss.png')
+plt.savefig('./src/features/loss.png')
 plt.show()
+
+features_train = np.zeros((train_data.shape[0],16))
+features_test = np.zeros((test_data.shape[0],16))
+features_train[:,0:2] = train_data[:,0:2]
+features_test[:,0:2] = test_data[:,0:2]
+
+model.eval()
+with torch.no_grad():
+    for i, data in tqdm(enumerate(train_dataloader), total=int(len(train_dataset)/train_dataloader.batch_size)):
+        pt, _ = data
+        pt = pt.to(device)
+        pt = pt.view(pt.size(0), -1)
+        outputs = model.encode(pt).cpu().numpy()
+        features_train[i,2:] = outputs
+    for i, data in tqdm(enumerate(test_dataloader), total=int(len(test_dataset)/test_dataloader.batch_size)):
+        pt, _ = data
+        pt = pt.to(device)
+        pt = pt.view(pt.size(0), -1)
+        outputs = model.encode(pt).cpu().numpy()
+        features_train[i,2:] = outputs
+print("Features processed, now saving to file")
+
+
+np.savetxt("./data/processed/non-linear_features_train1.txt",features_train,delimiter=",")
+np.savetxt("./data/processed/non-linear_features_test1.txt",features_test,delimiter=",")
 
