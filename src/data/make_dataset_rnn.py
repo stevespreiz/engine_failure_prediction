@@ -34,8 +34,8 @@ def main(input_filepath, output_filepath):
         df_test = pd.read_csv(test_file,sep=' ',header=None)
         
         headers = ['unit','cycle','os 1', 'os 2', 'os 3'] #os = operational setting
-        for i in range(1,24):
-            headers.append('sm ' + str(i)) #sm = sensor measurement
+        for j in range(1,24):
+            headers.append('sm ' + str(j)) #sm = sensor measurement
         df_train.set_axis(headers,axis=1,inplace = True)
         df_train = df_train.drop('sm 22',axis=1)
         df_train = df_train.drop('sm 23',axis=1)
@@ -131,13 +131,9 @@ def main(input_filepath, output_filepath):
             df_test.loc[df_test['unit']==j,'cycle'] = num_cycles + final_cycle - df_test.loc[df_test['unit']==j,'cycle']
             # df_test.loc[df_test['unit']==j,'cycle'] = num_cycles+final_cycle+1-df_test.loc[df_test['unit']==j,'cycle']
         df_test.rename(columns={'cycle':'RUL'},inplace=True)
-
-
-        # test_target_df.set_axis(["RUL"],axis=1,inplace=True)
-        # df_test['RUL'] = test_target_df['RUL']
-
-
         df_test.to_csv(output_filepath+'processed_rnn_'+test_name,sep=',')
+
+
 
         train_file = np.loadtxt(output_filepath+'processed_rnn_'+train_name,delimiter=",",skiprows=1)
         test_file  = np.loadtxt(output_filepath+'processed_rnn_'+test_name,delimiter=",",skiprows=1)
@@ -153,10 +149,58 @@ def main(input_filepath, output_filepath):
         np.savetxt(output_filepath+'standardized_'+train_name,train_file,delimiter=",")
         np.savetxt(output_filepath+'standardized_'+test_name,test_file,delimiter=",")
 
+        #create windowed train data sets as in paper (lots of storage for this one)
+        N_tws = np.array([0,50,20,30,15])
+        N_tw = N_tws[i]
+
+        train_starts = np.zeros((num_units,1))
+        train_lengths = np.zeros((num_units,1))
+        test_starts = np.zeros((num_units_test,1))
+        test_lengths = np.zeros((num_units_test,1))
+        #mark start locations in numpy mat for each unit and number of entries
+        ind = 0
+        for n in range(1,num_units+1):
+            while(train_file[ind,0] != n):
+                ind += 1
+                # train_lengths[n-1] += 1
+            train_starts[n-1] = ind
+            # train_lengths[n-1] += 1
+        for n in range(1,num_units):
+            train_lengths[n-1] = train_starts[n] - train_starts[n-1]
+        train_lengths[num_units - 1] = train_file.shape[0] - train_starts[num_units-1]
+        ind = 0
+        # for n in range(num_units_test):
+        #     while(test_file[ind,0] != n):
+        #         ind += 1
+        #         train_lengths[n] += 1
+        #     test_starts[n] = ind
+        #     test_lengths[n] += 1
+        
+        # print(train_lengths)
+        train_num_windows = train_lengths - N_tw + 1
+        # print(train_num_windows)
+
+        #if want to save the windowed data (big file)
+        if(True):
+            train_windowed = np.zeros((int(np.sum(train_num_windows))*N_tw,train_file.shape[1]))
+            row = 0
+            for n in range(num_units):
+                for j in range(int(train_num_windows[n])):
+                    # print(f"n: {n}")
+                    # print(f"j: {j}")
 
 
+                    start = int(train_starts[n]) + j
+                    end = start + N_tw
+
+                
+                    train_windowed[row:(row+N_tw),:] = train_file[start:end,:]
+                    row += N_tw
+            #this is very big file but hopefully can copy to GPU once and then whole thing runs fast
+            np.savetxt(output_filepath+'windowed_'+train_name,train_windowed,delimiter=",")
 
 
+     
 
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
