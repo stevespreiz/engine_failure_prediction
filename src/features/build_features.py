@@ -98,6 +98,9 @@ criterion = nn.MSELoss()
 # the optimizer
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
+# get the layers as a list
+model_children = list(model.children())
+
 def kl_divergence(rho, rho_hat):
     rho_hat = torch.mean(F.sigmoid(rho_hat), 1) # sigmoid because we need the probability distributions
     rho = torch.tensor([rho] * len(rho_hat)).to(device)
@@ -117,7 +120,7 @@ def fit(model, dataloader, epoch):
     model.train()
     running_loss = 0.0
     counter = 0
-    for i, data in tqdm(enumerate(dataloader), total=int(len(trainset)/dataloader.batch_size)):
+    for i, data in tqdm(enumerate(dataloader), total=int(len(train_dataset)/dataloader.batch_size)):
         counter += 1
         img, _ = data
         img = img.to(device)
@@ -137,8 +140,7 @@ def fit(model, dataloader, epoch):
     
     epoch_loss = running_loss / counter
     print(f"Train Loss: {epoch_loss:.3f}")
-    # save the reconstructed images 
-    # save_decoded_image(outputs.cpu().data, f"../outputs/images/train{epoch}.png")
+    
     return epoch_loss
 
 # define the validation function
@@ -148,19 +150,17 @@ def validate(model, dataloader, epoch):
     running_loss = 0.0
     counter = 0
     with torch.no_grad():
-        for i, data in tqdm(enumerate(dataloader), total=int(len(testset)/dataloader.batch_size)):
+        for i, data in tqdm(enumerate(dataloader), total=int(len(test_dataset)/dataloader.batch_size)):
             counter += 1
-            img, _ = data
-            img = img.to(device)
-            img = img.view(img.size(0), -1)
-            outputs = model(img)
-            loss = criterion(outputs, img)
+            pt, _ = data
+            pt = pt.to(device)
+            pt = pt.view(pt.size(0), -1)
+            outputs = model(pt)
+            loss = criterion(outputs, pt)
             running_loss += loss.item()
     epoch_loss = running_loss / counter
     print(f"Val Loss: {epoch_loss:.3f}")  
-    # save the reconstructed images 
-    outputs = outputs.view(outputs.size(0), 1, 28, 28).cpu().data
-    save_image(outputs, f"../outputs/images/reconstruction{epoch}.png")
+
     return epoch_loss
 
 # train and validate the autoencoder neural network
@@ -169,8 +169,8 @@ val_loss = []
 start = time.time()
 for epoch in range(EPOCHS):
     print(f"Epoch {epoch+1} of {EPOCHS}")
-    train_epoch_loss = fit(model, trainloader, epoch)
-    val_epoch_loss = validate(model, testloader, epoch)
+    train_epoch_loss = fit(model, train_dataloader, epoch)
+    val_epoch_loss = validate(model, test_dataloader, epoch)
     train_loss.append(train_epoch_loss)
     val_loss.append(val_epoch_loss)
 end = time.time()
