@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler,MinMaxScaler
 # import seaborn as sns
 
 
@@ -107,6 +108,7 @@ def main(input_filepath, output_filepath):
 
             df_train.loc[df_train['unit'] == j, 'cycle'] = total_life - df_train.loc[df_train['unit'] == j, 'cycle']
         df_train.rename(columns={'cycle':'RUL'},inplace=True)
+        df_train['RUL'][df_train['RUL'] > 130] = 130 # described in GRU for RUL paper
 
         target = df_train['RUL']
         # df_train = df_train.drop('too_soon',axis=1)
@@ -136,6 +138,20 @@ def main(input_filepath, output_filepath):
 
 
         df_test.to_csv(output_filepath+'processed_rnn_'+test_name,sep=',')
+
+        train_file = np.loadtxt(output_filepath+'processed_rnn_'+train_name,delimiter=",",skiprows=1)
+        test_file  = np.loadtxt(output_filepath+'processed_rnn_'+test_name,delimiter=",",skiprows=1)
+        #,unit,RUL,os 1,os 2,os 3,sm 1,sm 2,sm 3,sm 4,sm 5,sm 6,sm 7,sm 8,sm 9,sm 10,sm 11,sm 12,sm 13,sm 14,sm 15,sm 16,sm 17,sm 18,sm 19,sm 20,sm 21
+        train_file = train_file[:,1:] #remove row numbers
+        test_file = test_file[:,1:]
+
+        scaler = MinMaxScaler(feature_range=(-1,1)) #discussed in GRU for RUL paper, range is now 0 => -1, 1 => 130
+        scaler.fit(train_file[:,1:]) #ignore unit number 
+        train_file[:,1:] = scaler.transform(train_file[:,1:])
+        test_file[:,1:] = scaler.transform(test_file[:,1:])
+
+        np.savetxt(output_filepath+'standardized_'+train_name,train_file,delimiter=",")
+        np.savetxt(output_filepath+'standardized_'+test_name,test_file,delimiter=",")
 
 
 
