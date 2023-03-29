@@ -131,6 +131,8 @@ def main(input_filepath, output_filepath):
             df_test.loc[df_test['unit']==j,'cycle'] = num_cycles + final_cycle - df_test.loc[df_test['unit']==j,'cycle']
             # df_test.loc[df_test['unit']==j,'cycle'] = num_cycles+final_cycle+1-df_test.loc[df_test['unit']==j,'cycle']
         df_test.rename(columns={'cycle':'RUL'},inplace=True)
+        df_test['RUL'][df_test['RUL'] > 130] = 130 # described in GRU for RUL paper
+
         df_test.to_csv(output_filepath+'processed_rnn_'+test_name,sep=',')
 
 
@@ -181,7 +183,7 @@ def main(input_filepath, output_filepath):
         # print(train_num_windows)
 
         #if want to save the windowed data (big file)
-        if(True):
+        if(False):
             train_windowed = np.zeros((int(np.sum(train_num_windows))*N_tw,train_file.shape[1]))
             row = 0
             for n in range(num_units):
