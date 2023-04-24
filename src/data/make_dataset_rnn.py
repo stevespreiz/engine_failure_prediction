@@ -43,61 +43,6 @@ def main(input_filepath, output_filepath):
         df_test = df_test.drop('sm 22',axis=1)
         df_test = df_test.drop('sm 23',axis=1)
 
-        # plan to create two versions of the training data
-        # 1. typical normalized features on just sample average 
-        # 2. running summaries like in the reference machine failure project
-
-        # 1. normalized features
-
-        # 2. running summaries
-        # feature_window = 7 # number of cycles to average over
-        
-        # df_train['too_soon'] = np.where((df_train.cycle < feature_window),1,0)
-        # df_test['too_soon'] = np.where((df_test.cycle < feature_window),1,0)
-        
-       
-        # for j in range(1,4):
-        #     #loop operational settings
-        #     col = 'os '+str(j)
-        #     df_train[col+'_mean'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).mean()) , df_train[col])
-        #     df_train[col+'_med'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).median()) , df_train[col])
-        #     df_train[col+'_max'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).max()) , df_train[col])
-        #     df_train[col+'_min'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).min()) , df_train[col])
-        #     df_test[col+'_mean'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).mean()) , df_test[col])
-        #     df_test[col+'_med'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).median()) , df_test[col])
-        #     df_test[col+'_max'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).max()) , df_test[col])
-        #     df_test[col+'_min'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).min()) , df_test[col])
-
-        # for j in range(1,22):
-        #     #loop sensor outputs
-        #     col = 'sm '+str(j)
-        #     df_train[col+'_mean'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).mean()) , df_train[col])
-        #     df_train[col+'_med'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).median()) , df_train[col])
-        #     df_train[col+'_max'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).max()) , df_train[col])
-        #     df_train[col+'_min'] = np.where((df_train.too_soon == 0), \
-        #         (df_train[col].rolling(min_periods=1, window=feature_window).min()) , df_train[col])
-        #     df_train[col+'_chg'] = np.where((df_train[col+'_mean']==0),0,df_train[col]/df_train[col+'_mean'])
-        #     df_test[col+'_mean'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).mean()) , df_test[col])
-        #     df_test[col+'_med'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).median()) , df_test[col])
-        #     df_test[col+'_max'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).max()) , df_test[col])
-        #     df_test[col+'_min'] = np.where((df_test.too_soon == 0), \
-        #         (df_test[col].rolling(min_periods=1, window=feature_window).min()) , df_test[col])
-        #     df_test[col+'_chg'] = np.where((df_test[col+'_mean']==0),0,df_test[col]/df_test[col+'_mean'])
-
         # create RUL col to replace cycle
         num_units = df_train['unit'].max()
         train_groups = df_train.groupby('unit')
@@ -108,7 +53,7 @@ def main(input_filepath, output_filepath):
 
             df_train.loc[df_train['unit'] == j, 'cycle'] = total_life - df_train.loc[df_train['unit'] == j, 'cycle']
         df_train.rename(columns={'cycle':'RUL'},inplace=True)
-        df_train['RUL'][df_train['RUL'] > 130] = 130 # described in GRU for RUL paper
+        df_train['RUL'][df_train['RUL'] > 130] = 130 # described in Heimes 2008 paper
 
         target = df_train['RUL']
         # df_train = df_train.drop('too_soon',axis=1)
@@ -171,19 +116,10 @@ def main(input_filepath, output_filepath):
             train_lengths[n-1] = train_starts[n] - train_starts[n-1]
         train_lengths[num_units - 1] = train_file.shape[0] - train_starts[num_units-1]
         ind = 0
-        # for n in range(num_units_test):
-        #     while(test_file[ind,0] != n):
-        #         ind += 1
-        #         train_lengths[n] += 1
-        #     test_starts[n] = ind
-        #     test_lengths[n] += 1
-        
-        # print(train_lengths)
-        train_num_windows = train_lengths - N_tw + 1
-        # print(train_num_windows)
 
+        train_num_windows = train_lengths - N_tw + 1
         #if want to save the windowed data (big file)
-        if(False):
+        if(True):
             train_windowed = np.zeros((int(np.sum(train_num_windows))*N_tw,train_file.shape[1]))
             row = 0
             for n in range(num_units):
