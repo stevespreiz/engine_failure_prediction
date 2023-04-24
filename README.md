@@ -11,6 +11,11 @@ Data is included in this repository for convenience.
 
 Several ML approaches will be tested and compared for effectiveness in predicting on the test data. 
 
+To execute the model:
+
+- Run the script: ./src/data/make_dataset_rnn.py to generate the data
+- Execute the model in ./notebooks/5.0-ss-gru-intial.ipynb (more instructions there)
+
 Project Organization
 ------------
 
